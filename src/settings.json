@@ -1,0 +1,5 @@
+{
+    "user": "root",
+    "passwd": "admin",
+    "bbs": "http:127.0.0.1:3000/bbs"
+}
