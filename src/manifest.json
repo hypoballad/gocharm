@@ -1,0 +1,22 @@
+{
+  "name": "gocharm",
+  "description": "5ch browser extensions for Chrome",
+  "version": null,
+  "manifest_version": 2,
+  "icons": {
+    "48": "icons/icon_48.png",
+    "128": "icons/icon_128.png"
+  },
+  "browser_action": {
+    "default_title": "gocharm",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "permissions": [
+    "http://127.0.0.1:3000/*"
+  ]
+}
