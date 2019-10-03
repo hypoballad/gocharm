@@ -1,14 +1,17 @@
 <template>
   <div>
-    <nav class="panel">
+    <nav class="panel" ref="element">
       <p class="panel-heading">
         {{ headerTitle }}
       </p>
       <div class="panel-block">
         <p class="control has-icons-left">
-          <input class="input is-small" type="text" placeholder="search">
+          <input id="search" class="input is-small" type="text" placeholder="search">
           <span class="icon is-small is-left">
-            <i class="fas fa-search" aria-hidden="true"></i>
+            <b-icon
+              icon="magnify-plus-outline"
+              size="is-middle">
+            </b-icon>
           </span>
         </p>
       </div>
@@ -18,69 +21,31 @@
         <a :class="{'is-active': activeTab('is-star')}" @click="setTab('is-star')">star</a>
       </p>
       <a class="panel-block" v-for="(item, index) in panelList" @click="panelClick(item)">
-        <span v-if="activeMode('is-subject')">{{ index+1 }}: {{ item.title }}</span>
-        <span v-if="activeMode('is-bbs')">{{ item.title }}</span>
-        <span v-if="activeMode('is-thread')">{{ item.no }}:</span><span v-if="activeMode('is-thread')" v-html="item.message"></span>
-        <!-- <span class="panel-icon">
-          <b-icon
-              icon="star-outline"
-              size="is-middle">
-            </b-icon>
-        </span> -->
+        <span v-if="activeMode('is-subject')" v-show="showPanel">{{ index+1 }}: {{ item.title }}</span>
+        <span v-if="activeMode('is-bbs')" v-show="showPanel">{{ item.title }}</span>
+        <span v-if="activeMode('is-thread')" v-show="showPanel">{{ item.no }}:</span><span v-if="activeMode('is-thread')" v-html="item.message"></span>
       </a>
-
-      <!-- <a class="panel-block" v-if="isRecent" v-for="(item, index) in panelList">
-        {{ item.title }}
-      </a> -->
-
-      <!-- <a class="panel-block is-active">
-        <span class="panel-icon">
-          <i class="fas fa-book" aria-hidden="true"></i>
-        </span>
-        bulma
-      </a> -->
-
-      <!-- <a class="panel-block">
-        <span class="panel-icon">
-          <b-icon
-                    icon="account"
-                    size="is-small">
-                </b-icon>
-        </span>
-        daniellowtw/infboard
-      </a>
-        <a class="panel-block">
-        daniellowtw/infboard
-      </a>
-      <label class="panel-block">
-        <input type="checkbox">
-        remember me
-      </label> -->
-      <div class="panel-block">
-        <button class="button is-link is-outlined is-fullwidth">
-          go to top
+      <div class="panel-block" v-if="activeMode('is-thread')">
+        <button class="button is-link is-outlined is-fullwidth" @click="syncClick">
+          sync
         </button>
       </div>
     </nav>
-    <!-- <div>
-        {{ selfURL }}
-        {{ settings }}
-    </div> -->
     <footer class="footer">
       <p class="buttons">
-        <a class="button" >
+        <a class="button" @click="backClick">
           <b-icon
             icon="step-backward"
             size="is-small">
           </b-icon>
         </a>
-        <a class="button" >
+        <!-- <a class="button" >
           <b-icon
             icon="sort-variant"
             size="is-small">
           </b-icon>
           勢い
-        </a>
+        </a> -->
         <a class="button" @click="syncClick">
           <span class="icon">
             <b-icon
@@ -98,13 +63,6 @@
           </span>
         </a>
       </p>
-        <!-- <div class="content has-text-centered">
-          <a :href="selfURL" target="_blank">maximize
-            <b-icon
-              icon="open-in-new"
-              size="is-small">
-            </b-icon></a>
-        </div> -->
     </footer>
   </div>
 </template>
@@ -125,6 +83,8 @@ const MODE_STATE = {
   'THREAD': 1<<2
 }
 
+var loadingComponent
+
 export default {
   components: {
     // Bbs
@@ -135,13 +95,25 @@ export default {
       selfURL: chrome.extension.getURL('') + 'popup/popup.html',
       settings: {},
       panelList: [],
+      showPanel: true,
       tabState: 0,
       modeState: 0,
+      currentTitle: '',
       currentSub: '',
       currentThr: ''
     }
   },
   methods: {
+    loading: function() {
+      loadingComponent = this.$buefy.loading.open({
+        container: this.$refs.element.$el
+      })
+      this.showPanel = false
+    },
+    closeLoad: function() {
+      loadingComponent.close()
+      this.showPanel = true
+    },
     setMode: function(mode) {
       switch(mode){
         case 'is-subject':
@@ -157,16 +129,8 @@ export default {
           this.modeState &= ~(MODE_STATE.SUBJECT | MODE_STATE.THREAD)
           break
       }
-      console.log(parseInt(this.modeState.toString(2)))
     },
-    activeMode: function(mode){
-      // let item = sessionStorage.getItem(ACTIVE_MODE)
-      // if (item !== null) {
-      //   this.modeState = Number(item)
-      // } else {
-      //   this.modeState |= MODE_STATE.BBS
-      // }
-      
+    activeMode: function(mode){      
       switch(mode) {
         case 'is-bbs':
           return (this.modeState & MODE_STATE.BBS)
@@ -175,7 +139,6 @@ export default {
         case 'is-thread':
           return (this.modeState & MODE_STATE.THREAD)
       }
-      // sessionStorage.setItem(MODE_STATE, String(this.modeState))
     },
     setTab: function(key) {
       switch(this.tabState) {
@@ -192,15 +155,8 @@ export default {
           this.tabState &= ~(TAB_STATE.RECENT | TAB_STATE.STAR)
           break
       }
-      sessionStorage.setItem(ACTIVE_TAB, String(this.tabState))
     },
     activeTab: function(key) {
-      let item = sessionStorage.getItem(ACTIVE_TAB)
-      if (item !== null) {
-        this.tabState = Number(item)
-      } else {
-        this.tabState |= TAB_STATE.BASELIST
-      }
       switch(key){
         case 'is-baselist':
           return (this.tabState & TAB_STATE.BASELIST)
@@ -222,9 +178,10 @@ export default {
       }
       if (this.activeMode('is-subject')){
         this.setMode('is-thread')
+        this.currentTitle = this.headerTitle
         this.headerTitle = item.title
         this.currentThr = item.thread
-        this.loadThread(item.thread, false)
+        this.loadThread(item.thread, '', false)
         return
       }
     },
@@ -236,12 +193,30 @@ export default {
         return
       }
       if (this.activeMode('is-thread')){
-        this.loadThread(this.currentThr, true)
+        console.log(this.panelList[this.panelList.length - 1])
+        let no = Number(this.panelList[this.panelList.length - 1].no)
+        let range = '' +  (no+1) + '-'
+        this.loadThread(this.currentThr, range, true)
         return
       }
-      
+    },
+    backClick: function() {
+      if (this.activeMode('is-thread')){
+        window.scrollTo(0, 0)
+        this.setMode('is-subject')
+        this.headerTitle = this.currentTitle
+        this.loadSubject(this.currentSub, false)
+        return 
+      }
+      if (this.activeMode('is-subject')) {
+        window.scrollTo(0, 0)
+        this.setMode('is-bbs')
+        this.headerTitle = 'bbs list'
+        this.loadBBS(false)
+      }
     },
     loadBBS: function (reload) {
+      this.loading()
       window.scrollTo(0, 0)
       let self =this
       if (!reload) {
@@ -249,6 +224,7 @@ export default {
         if (bbsData !== null) {
           self.panelList = JSON.parse(bbsData)
           console.log('bbs from cache')
+          this.closeLoad()
           return
         }
       }
@@ -260,9 +236,11 @@ export default {
         response => {
           self.panelList = JSON.parse(response)
           sessionStorage.setItem(BASE_LIST, response)
+          self.closeLoad()
         })
     },
     loadSubject: function(url, reload) {
+      this.loading()
       window.scrollTo(0, 0)
       console.log('load subject')
       let encoded = encodeURIComponent(url)
@@ -277,10 +255,10 @@ export default {
               return {'title': item.title.slice(item.title.indexOf(':')+1).trim(),
                       'thread': item.thread}
               })
+          this.closeLoad()
           return
         }
       }
-      
       let self = this
       chrome.runtime.sendMessage(
         {
@@ -295,25 +273,28 @@ export default {
               return {'title': item.title.slice(item.title.indexOf(':')+1).trim(),
                       'thread': item.thread}
               })
+          self.closeLoad()
         })
-      console.log(uri)
     },
-    loadThread: function(url, reload) {
+    loadThread: function(url, range, reload) {
+      this.loading()
       console.log('load thread')
       let encoded1 = encodeURIComponent(this.currentSub)
-      let encoded2 = encodeURIComponent(url)
+      let encoded2 = encodeURIComponent(url + range)
       let uri = this.settings.api + '/thread/' + encoded1 + '/' + encoded2
       console.log(uri)
       if (!reload) {
-        let threadsData = sessionStorage.getItem(uri)
+        let threadsData = sessionStorage.getItem(url)
         if (threadsData !== null) {
           let threads = JSON.parse(threadsData)
           console.log('thread from cache')
           console.log(threads)
           this.panelList = threads
+          this.closeLoad()
           return
         }
       }
+      console.log('thread from 5ch')
       let self = this
       chrome.runtime.sendMessage(
         {
@@ -322,11 +303,46 @@ export default {
         },
         response => {
           let threads = JSON.parse(response)
-          console.log(threads)
-          sessionStorage.setItem(uri, response)
-          self.panelList = threads
+          if (threads.lengt < 1){
+            this.closeLoad()
+            return
+          }
+          let past = sessionStorage.getItem(url)
+          if (reload) {
+            self.panelList = self.panelList.concat(threads.slice(1))
+            sessionStorage.setItem(url, JSON.stringify(self.panelList))
+          } else {
+            sessionStorage.setItem(uri, response)
+            self.panelList = threads
+            window.scrollTo(0, 0)
+          }
+          self.closeLoad()
         })
     }
+  },
+  mounted: function() {
+      this.$nextTick(() => {
+      var input = document.getElementById("search")
+      var canEnter = false
+      input.addEventListener( "keypress" , function () {
+        canEnter = true
+      } , false )
+      input.addEventListener( "keyup" , function () {
+        if(!canEnter) {
+          return
+        }
+        canEnter = false
+        // 以下エンターを押したときの挙動
+        console.log(input.value)
+        let els = Array.from(document.querySelectorAll('body > div > nav > a > span'))
+        els.forEach(function(el, idx) {
+          if (el.textContent.indexOf(input.value) > 0) {
+            el.scrollIntoView()
+            return
+          }
+        })
+      } , false)
+    })
   },
   created: function(){
       console.log('created')
@@ -354,5 +370,8 @@ footer {
   position: fixed;
   right: 0;
   z-index: 30;
+}
+.panel:not(:last-child) {
+  margin-bottom: 5rem;
 }
 </style>
