@@ -1,6 +1,7 @@
 
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
+        console.log(request)
         if (request.contentScriptQuery == 'fetch') {
             fetch (request.url)
             .then(response => response.text())

@@ -20,11 +20,9 @@
         <a :class="{'is-active': activeTab('is-recent')}" @click="setTab('is-recent')">recent</a>
         <a :class="{'is-active': activeTab('is-star')}" @click="setTab('is-star')">star</a>
       </p>
-      <a class="panel-block" v-for="(item, index) in panelList" @click="panelClick(item)">
-        <span v-if="activeMode('is-subject')" v-show="showPanel">{{ index+1 }}: {{ item.title }}</span>
-        <span v-if="activeMode('is-bbs')" v-show="showPanel">{{ item.title }}</span>
-        <span v-if="activeMode('is-thread')" v-show="showPanel">{{ item.no }}:</span><span v-if="activeMode('is-thread')" v-html="item.message"></span>
-      </a>
+      <bbs v-if="activeMode('is-bbs')" :panel-list="panelList" @clickHandler="clickBBS"/>
+      <subject v-if="activeMode('is-subject')" :panel-list="panelList" @clickHandler="clickSubj"/>
+      <thread v-if="activeMode('is-thread')" :panel-list="panelList" />
       <div class="panel-block" v-if="activeMode('is-thread')">
         <button class="button is-link is-outlined is-fullwidth" @click="syncClick">
           sync
@@ -67,7 +65,9 @@
   </div>
 </template>
 <script>
-// import Bbs from './Bbs.vue'
+import Bbs from './Bbs.vue'
+import Subject from './Subject.vue'
+import Thread from './Thread.vue'
 const ACTIVE_MODE = 'activemode'
 const ACTIVE_TAB = 'activtab'
 const BASE_LIST = 'baselist'
@@ -87,7 +87,9 @@ var loadingComponent
 
 export default {
   components: {
-    // Bbs
+    Bbs,
+    Subject,
+    Thread
   },
   data () {
     return {
@@ -167,23 +169,18 @@ export default {
       }
       return false
     },
-    panelClick: function (item) {
-      console.log(item)
-      if (this.activeMode('is-bbs')) {
-        this.setMode('is-subject')
-        this.currentSub = item.bbs
-        this.headerTitle = item.title
-        this.loadSubject(item.bbs, false)
-        return
-      }
-      if (this.activeMode('is-subject')){
-        this.setMode('is-thread')
-        this.currentTitle = this.headerTitle
-        this.headerTitle = item.title
-        this.currentThr = item.thread
-        this.loadThread(item.thread, '', false)
-        return
-      }
+    clickBBS: function (item) {
+      this.setMode('is-subject')
+      this.currentSub = item.bbs
+      this.headerTitle = item.title
+      this.loadSubject(item.bbs, false)
+    },
+    clickSubj: function(item) {
+      this.setMode('is-thread')
+      this.currentTitle = this.headerTitle
+      this.headerTitle = item.title
+      this.currentThr = item.thread
+      this.loadThread(item.thread, '', false)
     },
     syncClick: function() {
       console.log('sync')
@@ -218,16 +215,17 @@ export default {
     loadBBS: function (reload) {
       this.loading()
       window.scrollTo(0, 0)
-      let self =this
       if (!reload) {
         let bbsData = sessionStorage.getItem(BASE_LIST)
         if (bbsData !== null) {
-          self.panelList = JSON.parse(bbsData)
+          this.panelList = JSON.parse(bbsData)
           console.log('bbs from cache')
           this.closeLoad()
           return
         }
       }
+      let self =this
+      console.log('bbs from 5ch')
       chrome.runtime.sendMessage(
         {
           contentScriptQuery: 'fetch',
@@ -267,12 +265,13 @@ export default {
         },
         response => {
           let subs = JSON.parse(response)
-          sessionStorage.setItem(uri, response)
-          self.panelList = subs.filter(item => item.title.slice(item.title.indexOf(':')+1).trim().length > 0)
+          let convsubs = subs.filter(item => item.title.slice(item.title.indexOf(':')+1).trim().length > 0)
             .map(item => {
               return {'title': item.title.slice(item.title.indexOf(':')+1).trim(),
                       'thread': item.thread}
               })
+          sessionStorage.setItem(uri, JSON.stringify(convsubs))
+          self.panelList = convsubs
           self.closeLoad()
         })
     },
@@ -373,5 +372,15 @@ footer {
 }
 .panel:not(:last-child) {
   margin-bottom: 5rem;
+}
+.thumb_i {
+    display: block;
+    height: 65px;
+    width: 65px;
+}
+.image img {
+    display: block;
+    height: 65px;
+    width: 65px;
 }
 </style>
