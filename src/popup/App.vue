@@ -68,6 +68,8 @@
 import Bbs from './Bbs.vue'
 import Subject from './Subject.vue'
 import Thread from './Thread.vue'
+
+const STATE_KEY = 'state'
 const ACTIVE_MODE = 'activemode'
 const ACTIVE_TAB = 'activtab'
 const BASE_LIST = 'baselist'
@@ -105,6 +107,11 @@ export default {
       currentThr: ''
     }
   },
+  watch: {
+    panelList: function() {
+      this.backupState()
+    }
+  },
   methods: {
     loading: function() {
       loadingComponent = this.$buefy.loading.open({
@@ -115,6 +122,35 @@ export default {
     closeLoad: function() {
       loadingComponent.close()
       this.showPanel = true
+    },
+    backupState: function() {
+      let state = {
+        headerTitle: this.headerTitle,
+        settings: this.settings,
+        panelList: this.panelList,
+        tabState: this.tabState,
+        modeState: this.modeState,
+        currentTitle: this.currentTitle,
+        currentSub: this.currentSub,
+        currentThr: this.currentThr
+      }
+      localStorage.setItem(STATE_KEY, JSON.stringify(state))
+    },
+    restoreState: function() {
+      let item = localStorage.getItem(STATE_KEY)
+      if (item === null) {
+        return false
+      }
+      let state = JSON.parse(item)
+      this.headerTitle = state.headerTitle
+      this.settings = state.settings
+      this.panelList = state.panelList
+      this.tabState = state.tabState
+      this.modeState = state.modeState
+      this.currentTitle = state.currentTitle
+      this.currentSub = state.currentSub
+      this.currentThr = state.convsubs
+      return true
     },
     setMode: function(mode) {
       switch(mode){
@@ -216,7 +252,7 @@ export default {
       this.loading()
       window.scrollTo(0, 0)
       if (!reload) {
-        let bbsData = sessionStorage.getItem(BASE_LIST)
+        let bbsData = localStorage.getItem(BASE_LIST)
         if (bbsData !== null) {
           this.panelList = JSON.parse(bbsData)
           console.log('bbs from cache')
@@ -233,7 +269,7 @@ export default {
         },
         response => {
           self.panelList = JSON.parse(response)
-          sessionStorage.setItem(BASE_LIST, response)
+          localStorage.setItem(BASE_LIST, response)
           self.closeLoad()
         })
     },
@@ -244,7 +280,7 @@ export default {
       let encoded = encodeURIComponent(url)
       let uri = this.settings.api + '/subject/' + encoded
       if (!reload) {
-        let subsData = sessionStorage.getItem(uri)
+        let subsData = localStorage.getItem(uri)
         if (subsData !== null) {
           let subs = JSON.parse(subsData)
           console.log('subs from cache')
@@ -270,7 +306,7 @@ export default {
               return {'title': item.title.slice(item.title.indexOf(':')+1).trim(),
                       'thread': item.thread}
               })
-          sessionStorage.setItem(uri, JSON.stringify(convsubs))
+          localStorage.setItem(uri, JSON.stringify(convsubs))
           self.panelList = convsubs
           self.closeLoad()
         })
@@ -283,7 +319,7 @@ export default {
       let uri = this.settings.api + '/thread/' + encoded1 + '/' + encoded2
       console.log(uri)
       if (!reload) {
-        let threadsData = sessionStorage.getItem(url)
+        let threadsData = localStorage.getItem(url)
         if (threadsData !== null) {
           let threads = JSON.parse(threadsData)
           console.log('thread from cache')
@@ -306,12 +342,12 @@ export default {
             this.closeLoad()
             return
           }
-          let past = sessionStorage.getItem(url)
+          let past = localStorage.getItem(url)
           if (reload) {
             self.panelList = self.panelList.concat(threads.slice(1))
-            sessionStorage.setItem(url, JSON.stringify(self.panelList))
+            localStorage.setItem(url, JSON.stringify(self.panelList))
           } else {
-            sessionStorage.setItem(uri, response)
+            localStorage.setItem(url, response)
             self.panelList = threads
             window.scrollTo(0, 0)
           }
@@ -345,6 +381,11 @@ export default {
   },
   created: function(){
       console.log('created')
+      if (this.restoreState()) {
+        console.log('restore')
+        return
+      }
+      console.log('init')
       this.setTab('is-baselist')
       this.setMode('is-bbs')
       let self = this
@@ -375,12 +416,12 @@ footer {
 }
 .thumb_i {
     display: block;
-    height: 65px;
-    width: 65px;
+    height: 165px;
+    width: 165px;
 }
-.image img {
-    display: block;
-    height: 65px;
-    width: 65px;
-}
+// .image img {
+//     display: block;
+//     height: 65px;
+//     width: 65px;
+// }
 </style>

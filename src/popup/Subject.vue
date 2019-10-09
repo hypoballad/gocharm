@@ -1,8 +1,7 @@
 <template>
     <div>
-        <a class="panel-block" v-for="item in computeData" v-bind:key="item.thread" @click="threadClick">
-            <div>{{ item.no }}: </div>
-            <div v-html="item.message"></div>
+        <a class="panel-block" v-for="(item, index) in computeData" v-bind:key="item.thread" @click="subjectClick(item)">
+            <span>{{ index+1 }}: {{ item.title }}</span>
         </a>
     </div>
 </template>
@@ -18,8 +17,8 @@ export default {
         }
     },
     methods: {
-        threadClick: function(item) {
-            console.log('click')
+        subjectClick: function(item) {
+            this.$emit('clickHandler', item)
         }
     },
     watch: {
@@ -40,10 +39,6 @@ export default {
 }
 </script>
 
-<style lang="scss">
-div img.thumb_i {
-    display: block;
-    height: 65px;
-    width: 65px;
-}
+<style lang="scss" scoped>
+
 </style>
