@@ -1,7 +1,8 @@
 <template>
     <div>
         <a class="panel-block" v-for="(item, index) in computeData" v-bind:key="item.thread" @click="subjectClick(item)">
-            <span>{{ index+1 }}: {{ item.title }}</span>
+            <span class="sub_no">{{ index+1 }}:</span>
+            <span class="sub_title">{{ item.title }}</span>
         </a>
     </div>
 </template>
@@ -39,6 +40,10 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
-
+<style lang="scss">
+span {
+    &sub_no {
+        margin-right: 0.5em;
+    }
+}
 </style>

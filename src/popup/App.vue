@@ -4,17 +4,6 @@
       <p class="panel-heading">
         {{ headerTitle }}
       </p>
-      <div class="panel-block">
-        <p class="control has-icons-left">
-          <input id="search" class="input is-small" type="text" placeholder="search">
-          <span class="icon is-small is-left">
-            <b-icon
-              icon="magnify-plus-outline"
-              size="is-middle">
-            </b-icon>
-          </span>
-        </p>
-      </div>
       <p class="panel-tabs">
         <a :class="{'is-active': activeTab('is-baselist')}" @click="setTab('is-baselist')">base</a>
         <a :class="{'is-active': activeTab('is-recent')}" @click="setTab('is-recent')">recent</a>
@@ -37,13 +26,6 @@
             size="is-small">
           </b-icon>
         </a>
-        <!-- <a class="button" >
-          <b-icon
-            icon="sort-variant"
-            size="is-small">
-          </b-icon>
-          勢い
-        </a> -->
         <a class="button" @click="syncClick">
           <span class="icon">
             <b-icon
@@ -60,6 +42,9 @@
             </b-icon>
           </span>
         </a>
+        <b-field>
+          <b-input id="search" placeholder="search" rounded></b-input>
+        </b-field>
       </p>
     </footer>
   </div>
@@ -73,6 +58,7 @@ const STATE_KEY = 'state'
 const ACTIVE_MODE = 'activemode'
 const ACTIVE_TAB = 'activtab'
 const BASE_LIST = 'baselist'
+const SCROLL_POS = 'scroll,g_pos'
 const TAB_STATE = {
   'RECENT': 1<<0,
   'STAR': 1<<1,
@@ -86,6 +72,7 @@ const MODE_STATE = {
 }
 
 var loadingComponent
+var timeoutId
 
 export default {
   components: {
@@ -104,11 +91,16 @@ export default {
       modeState: 0,
       currentTitle: '',
       currentSub: '',
-      currentThr: ''
+      currentThr: '',
+      skip: false,
     }
   },
   watch: {
     panelList: function() {
+      if (this.skip) {
+        this.skip = false
+        return
+      }
       this.backupState()
     }
   },
@@ -150,6 +142,11 @@ export default {
       this.currentTitle = state.currentTitle
       this.currentSub = state.currentSub
       this.currentThr = state.convsubs
+      let ypos = localStorage.getItem(SCROLL_POS)
+      if (ypos !== null) {
+        window.scrollTo(0, Number(ypos))
+      }
+      
       return true
     },
     setMode: function(mode) {
@@ -209,6 +206,7 @@ export default {
       this.setMode('is-subject')
       this.currentSub = item.bbs
       this.headerTitle = item.title
+      window.scrollTo(0, 0)
       this.loadSubject(item.bbs, false)
     },
     clickSubj: function(item) {
@@ -220,6 +218,10 @@ export default {
     },
     syncClick: function() {
       console.log('sync')
+      if (this.activeMode('is-bbs')) {
+        this.loadBBS(true)
+        return
+      }
       if (this.activeMode('is-subject')){
         console.log(this.currentSub)
         this.loadSubject(this.currentSub, true)
@@ -248,9 +250,16 @@ export default {
         this.loadBBS(false)
       }
     },
+    searchBBS: function(v) {
+      let r = new RegExp(v,'i')
+      let bbsData = localStorage.getItem(BASE_LIST)
+      let jsData = JSON.parse(bbsData)
+      this.panelList = jsData.filter(data => {
+        return r.test(data.title)
+      })
+    },
     loadBBS: function (reload) {
       this.loading()
-      window.scrollTo(0, 0)
       if (!reload) {
         let bbsData = localStorage.getItem(BASE_LIST)
         if (bbsData !== null) {
@@ -273,14 +282,21 @@ export default {
           self.closeLoad()
         })
     },
+    searchSubject: function(v) {
+      let r = new RegExp(v,'i')
+      let subData = localStorage.getItem(this.currentSub)
+      let jsData = JSON.parse(subData)
+      this.panelList = jsData.filter(data => {
+        return r.test(data.title)
+      })
+    },
     loadSubject: function(url, reload) {
       this.loading()
-      window.scrollTo(0, 0)
       console.log('load subject')
       let encoded = encodeURIComponent(url)
       let uri = this.settings.api + '/subject/' + encoded
       if (!reload) {
-        let subsData = localStorage.getItem(uri)
+        let subsData = localStorage.getItem(url)
         if (subsData !== null) {
           let subs = JSON.parse(subsData)
           console.log('subs from cache')
@@ -306,10 +322,18 @@ export default {
               return {'title': item.title.slice(item.title.indexOf(':')+1).trim(),
                       'thread': item.thread}
               })
-          localStorage.setItem(uri, JSON.stringify(convsubs))
+          localStorage.setItem(url, JSON.stringify(convsubs))
           self.panelList = convsubs
           self.closeLoad()
         })
+    },
+    searchThread: function(v) {
+      let r = new RegExp(v,'i')
+      let thrData = localStorage.getItem(this.currentThr)
+      let jsData = JSON.parse(thrData)
+      this.panelList = jsData.filter(data => {
+        return r.test(data.message)
+      })
     },
     loadThread: function(url, range, reload) {
       this.loading()
@@ -323,7 +347,6 @@ export default {
         if (threadsData !== null) {
           let threads = JSON.parse(threadsData)
           console.log('thread from cache')
-          console.log(threads)
           this.panelList = threads
           this.closeLoad()
           return
@@ -349,14 +372,21 @@ export default {
           } else {
             localStorage.setItem(url, response)
             self.panelList = threads
-            window.scrollTo(0, 0)
           }
           self.closeLoad()
         })
+    },
+    handleScroll: function() {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(function() {
+        localStorage.setItem(SCROLL_POS, window.pageYOffset.toString(10))
+      }, 500)
     }
   },
   mounted: function() {
-      this.$nextTick(() => {
+    let self = this
+    this.$nextTick(() => {
+      window.addEventListener('scroll', self.handleScroll);
       var input = document.getElementById("search")
       var canEnter = false
       input.addEventListener( "keypress" , function () {
@@ -369,13 +399,19 @@ export default {
         canEnter = false
         // 以下エンターを押したときの挙動
         console.log(input.value)
-        let els = Array.from(document.querySelectorAll('body > div > nav > a > span'))
-        els.forEach(function(el, idx) {
-          if (el.textContent.indexOf(input.value) > 0) {
-            el.scrollIntoView()
-            return
-          }
-        })
+        self.skip = true
+        if (self.activeMode('is-bbs')) {
+          self.searchBBS(input.value)
+          return
+        }
+        if (self.activeMode('is-subject')) {
+          self.searchSubject(input.value)
+          return
+        }
+        if (self.activeMode('is-thread')) {
+          self.searchThread(input.value)
+          return
+        }
       } , false)
     })
   },
@@ -414,14 +450,8 @@ footer {
 .panel:not(:last-child) {
   margin-bottom: 5rem;
 }
-.thumb_i {
-    display: block;
-    height: 165px;
-    width: 165px;
+body {
+    min-width: 600px;
 }
-// .image img {
-//     display: block;
-//     height: 65px;
-//     width: 65px;
-// }
+
 </style>
