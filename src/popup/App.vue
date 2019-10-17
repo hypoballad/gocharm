@@ -284,7 +284,7 @@ export default {
     },
     searchSubject: function(v) {
       let r = new RegExp(v,'i')
-      let subData = localStorage.getItem(this.currentSub)
+      let subData = sessionStorage.getItem(this.currentSub)
       let jsData = JSON.parse(subData)
       this.panelList = jsData.filter(data => {
         return r.test(data.title)
@@ -296,7 +296,7 @@ export default {
       let encoded = encodeURIComponent(url)
       let uri = this.settings.api + '/subject/' + encoded
       if (!reload) {
-        let subsData = localStorage.getItem(url)
+        let subsData = sessionStorage.getItem(url)
         if (subsData !== null) {
           let subs = JSON.parse(subsData)
           console.log('subs from cache')
@@ -322,14 +322,14 @@ export default {
               return {'title': item.title.slice(item.title.indexOf(':')+1).trim(),
                       'thread': item.thread}
               })
-          localStorage.setItem(url, JSON.stringify(convsubs))
+          sessionStorage.setItem(url, JSON.stringify(convsubs))
           self.panelList = convsubs
           self.closeLoad()
         })
     },
     searchThread: function(v) {
       let r = new RegExp(v,'i')
-      let thrData = localStorage.getItem(this.currentThr)
+      let thrData = sessionStorage.getItem(this.currentThr)
       let jsData = JSON.parse(thrData)
       this.panelList = jsData.filter(data => {
         return r.test(data.message)
@@ -343,7 +343,7 @@ export default {
       let uri = this.settings.api + '/thread/' + encoded1 + '/' + encoded2
       console.log(uri)
       if (!reload) {
-        let threadsData = localStorage.getItem(url)
+        let threadsData = sessionStorage.getItem(url)
         if (threadsData !== null) {
           let threads = JSON.parse(threadsData)
           console.log('thread from cache')
@@ -365,12 +365,12 @@ export default {
             this.closeLoad()
             return
           }
-          let past = localStorage.getItem(url)
+          let past = sessionStorage.getItem(url)
           if (reload) {
             self.panelList = self.panelList.concat(threads.slice(1))
-            localStorage.setItem(url, JSON.stringify(self.panelList))
+            sessionStorage.setItem(url, JSON.stringify(self.panelList))
           } else {
-            localStorage.setItem(url, response)
+            sessionStorage.setItem(url, response)
             self.panelList = threads
           }
           self.closeLoad()
